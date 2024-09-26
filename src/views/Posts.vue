@@ -1,49 +1,63 @@
 <!-- src/views/Posts.vue -->
 <template>
-  <div class="posts-page container p-4">
-    <h2 class="text-2xl font-bold mb-4">Posts</h2>
-
-    <!-- Filter by Tags -->
-    <div class="mb-4">
-      <h3 class="text-lg font-semibold mb-2">Filter by Tags</h3>
-      <div class="flex gap-2">
-        <button v-for="tag in tags" :key="tag.id" @click="filterByTag(tag)" :class="[
-          'px-4 py-2 rounded',
-          selectedTag === tag.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-        ]">
-          {{ tag.name }}
-        </button>
+  <div class="container mx-auto py-4">
+    <!-- Header Navigation -->
+    <nav class="bg-gray-800 py-4 mb-6">
+      <div class="container mx-auto flex justify-between items-center">
+        <div class="text-white text-xl font-bold">
+          <router-link to="/">Your Logo</router-link>
+        </div>
+        <div>
+          <button @click="signOut" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+            Sign Out
+          </button>
+        </div>
       </div>
-    </div>
+    </nav>
+
+    <!-- Tags Filter Component -->
+    <Tags />
 
     <!-- Search Functionality -->
     <div class="mb-4">
-      <input v-model="searchQuery" @input="fetchPosts" type="text" class="border p-2 w-full"
+      <input v-model="searchQuery" @input="onSearch" type="text" class="border rounded p-2 w-full"
         placeholder="Search posts..." />
     </div>
 
     <!-- Posts List -->
-    <div class="posts-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="post in filteredPosts" :key="post.id" class="post-card bg-white p-4 shadow rounded">
-        <img :src="post.image" alt="Post Image" class="w-full h-48 object-cover rounded mb-4" />
+    <div class="posts-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="post in posts" :key="post.id" class="post-card bg-white p-6 shadow rounded">
+        <img :src="post.image || 'https://via.placeholder.com/300x200'" alt="Post Image"
+          class="w-full h-48 object-cover rounded mb-4" />
         <h3 class="text-xl font-bold mb-2">{{ post.title }}</h3>
-        <p class="text-gray-700 mb-4">{{ post.excerpt }}</p>
+        <p class="text-gray-700 mb-4">{{ post.description }}</p>
         <div class="flex justify-between items-center">
-          <button class="text-blue-500" @click="viewPost(post.id)">View</button>
           <div class="flex gap-2">
-            <button class="text-green-500" @click="editPost(post.id)">Edit</button>
-            <button class="text-red-500" @click="deletePost(post.id)">Delete</button>
+            <router-link :to="`/posts/${post.id}`" class="text-blue-500 hover:underline">
+              View
+            </router-link>
+            <router-link :to="`/posts/edit/${post.id}`" class="text-green-500 hover:underline">
+              Edit
+            </router-link>
           </div>
+          <button @click="deletePost(post.id)" class="text-red-500 hover:underline">
+            Delete
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Pagination -->
-    <div class="pagination mt-6 flex justify-center">
-      <button @click="changePage(page - 1)" :disabled="page === 1" class="px-4 py-2 mr-2 bg-gray-200 rounded">
+    <!-- Pagination Controls -->
+    <div class="pagination mt-6 flex justify-center items-center gap-4">
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"
+        class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">
         Previous
       </button>
-      <button @click="changePage(page + 1)" :disabled="page === totalPages" class="px-4 py-2 bg-gray-200 rounded">
+      <span>
+        Page {{ currentPage }} of {{ totalPages }}
+      </span>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"
+        class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">
         Next
       </button>
     </div>
@@ -52,87 +66,64 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { usePostsStore } from '../stores/posts';
+import Tags from '../views/Tags.vue'; // Ensure the correct path
+import { useRouter } from 'vue-router';
 
-// Dummy Data with Images
-const tags = ref([
-  { id: 1, name: 'Technology' },
-  { id: 2, name: 'Health' },
-  { id: 3, name: 'Finance' },
-  { id: 4, name: 'Lifestyle' }
-]);
+const postsStore = usePostsStore();
+const router = useRouter();
 
-const posts = ref([
-  { id: 1, title: 'The Rise of AI', excerpt: 'Exploring the impact of artificial intelligence on our future.', image: 'https://via.placeholder.com/300x200?text=AI' },
-  { id: 2, title: 'Healthy Living Tips', excerpt: 'Simple tips to improve your overall well-being.', image: 'https://via.placeholder.com/300x200?text=Health' },
-  { id: 3, title: 'Investing 101', excerpt: 'An introduction to investing for beginners.', image: 'https://via.placeholder.com/300x200?text=Finance' },
-  { id: 4, title: 'Traveling on a Budget', excerpt: 'How to travel the world without breaking the bank.', image: 'https://via.placeholder.com/300x200?text=Travel' },
-  { id: 5, title: 'The Benefits of Meditation', excerpt: 'Understanding how meditation can improve mental health.', image: 'https://via.placeholder.com/300x200?text=Meditation' },
-  { id: 6, title: 'Tech Trends to Watch', excerpt: 'The top tech trends that will shape the next decade.', image: 'https://via.placeholder.com/300x200?text=Tech' },
-]);
-
+// Local state for search query
 const searchQuery = ref('');
-const selectedTag = ref(null);
-const page = ref(1);
-const itemsPerPage = 3; // Number of items per page
 
-// Fetch posts on component mount
+// Fetch posts and tags on component mount
 onMounted(() => {
-  fetchPosts();
+  postsStore.fetchPosts();
 });
 
-// Filter posts based on search query
-const filteredPosts = computed(() => {
-  let result = posts.value;
+// Computed properties from the store
+const posts = computed(() => postsStore.posts);
+const totalPages = computed(() => postsStore.totalPages);
+const currentPage = computed(() => postsStore.currentPage);
 
-  // Filter by search query
-  if (searchQuery.value) {
-    result = result.filter((post) => post.title.toLowerCase().includes(searchQuery.value.toLowerCase()));
-  }
-
-  // Filter by selected tag
-  if (selectedTag.value) {
-    // This is a placeholder; you would normally filter by tags associated with posts
-    // For now, assume all posts belong to all tags
-    result = result; // No filtering by tag for now
-  }
-
-  // Pagination
-  const start = (page.value - 1) * itemsPerPage;
-  return result.slice(start, start + itemsPerPage);
-});
-
-// Total pages for pagination
-const totalPages = computed(() => Math.ceil(posts.value.length / itemsPerPage));
-
-// Filter posts by selected tag
-const filterByTag = (tag) => {
-  selectedTag.value = tag.id;
-  page.value = 1; // Reset page when filtering
-  fetchPosts(); // Call the fetchPosts when filtering is implemented
+// Handle search input with debounce if necessary
+const onSearch = () => {
+  postsStore.fetchPosts({ searchQuery: searchQuery.value, page: 1 });
 };
 
-// Change page for pagination
+/**
+ * Change the current page for pagination.
+ * @param {number} newPage - The page number to navigate to.
+ */
 const changePage = (newPage) => {
-  if (newPage > 0 && newPage <= totalPages.value) {
-    page.value = newPage;
+  if (newPage >= 1 && newPage <= totalPages.value) {
+    postsStore.fetchPosts({ searchQuery: searchQuery.value, page: newPage });
   }
 };
 
-// Post actions (view, edit, delete)
-const viewPost = (id) => {
-  console.log(`View post with ID: ${id}`);
+/**
+ * Delete a post by ID.
+ * @param {number} id - ID of the post to delete.
+ */
+const deletePost = async (id) => {
+  const confirmed = confirm('Are you sure you want to delete this post?');
+  if (confirmed) {
+    await postsStore.deletePost(id);
+    // Optionally, show a notification or toast
+  }
 };
 
-const editPost = (id) => {
-  console.log(`Edit post with ID: ${id}`);
-};
-
-const deletePost = (id) => {
-  posts.value = posts.value.filter(post => post.id !== id); // Remove post from dummy data
-  fetchPosts(); // Refetch posts after deletion when implemented
+/**
+ * Handle user sign out.
+ */
+const signOut = () => {
+  // Implement your sign-out logic, e.g., clearing auth tokens and redirecting
+  // Example:
+  // authStore.logout();
+  router.push('/login');
 };
 </script>
 
 <style scoped>
-/* Add custom styles here or use Tailwind CSS */
+/* Add any component-specific styles here */
 </style>

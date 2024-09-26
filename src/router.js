@@ -1,9 +1,11 @@
 // src/router.js
 import { createRouter, createWebHistory } from "vue-router";
-import Login from "./views/Login.vue"; // Import the Login component
-import Posts from "./views/Posts.vue"; // Import the Posts component
-import Register from "./views/Register.vue"; // Import the Register component
-import NotFound from "./views/NotFound.vue"; // Optional 404 NotFound component
+import Login from "./views/Login.vue" 
+import Posts from "./views/Posts.vue"; 
+import Register from "./views/Register.vue"; 
+import ForgotPassword from "./views/ForgotPassword.vue"; 
+import ResetPassword from "./views/ResetPassword.vue"; 
+import NotFound from "./views/NotFound.vue"; 
 
 const routes = [
   {
@@ -20,6 +22,16 @@ const routes = [
     path: "/register",
     name: "register",
     component: Register,
+  },
+  {
+    path: "/forgot-password",
+    name: "ForgotPassword",
+    component: ForgotPassword,
+  },
+  {
+    path: "/reset-password",
+    name: "ResetPassword",
+    component: ResetPassword,
   },
   {
     path: "/posts",

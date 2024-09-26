@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import api from "../api/api";
+import api from "../api/api.js";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -8,10 +8,16 @@ export const useAuthStore = defineStore("auth", {
   }),
   actions: {
     async login(credentials) {
-      const { data } = await api.post("/login", credentials);
-      this.token = data.token;
-      localStorage.setItem("token", data.token);
-      this.user = data.user;
+      try {
+        const { data } = await api.post("/login", credentials);
+        this.token = data.token;
+        localStorage.setItem("token", data.token);
+        this.user = data.user;
+        return true; // Login successful
+      } catch (error) {
+        console.error("Login failed:", error);
+        return false; // Login failed
+      }
     },
     async logout() {
       await api.post("/logout");
