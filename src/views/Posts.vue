@@ -1,4 +1,3 @@
-<!-- src/views/Posts.vue -->
 <template>
   <div class="container mx-auto py-4">
     <!-- Header Navigation -->
@@ -18,7 +17,7 @@
     <!-- Tags Filter Component -->
     <Tags />
 
-    <!-- Search Functionality -->
+    <!-- Search  -->
     <div class="mb-4">
       <input v-model="searchQuery" @input="onSearch" type="text" class="border rounded p-2 w-full"
         placeholder="Search posts..." />
@@ -30,7 +29,8 @@
         <img :src="post.image || 'https://via.placeholder.com/300x200'" alt="Post Image"
           class="w-full h-48 object-cover rounded mb-4" />
         <h3 class="text-xl font-bold mb-2">{{ post.title }}</h3>
-        <p class="text-gray-700 mb-4">{{ post.description }}</p>
+        <!--  Description -->
+        <p class="text-gray-700 mb-4">{{ truncateDescription(post.description) }}</p>
         <div class="flex justify-between items-center">
           <div class="flex gap-2">
             <router-link :to="`/posts/${post.id}`" class="text-blue-500 hover:underline">
@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    <!-- Pagination Controls -->
+    <!-- Pagination -->
     <div class="pagination mt-6 flex justify-center items-center gap-4">
       <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"
         class="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">
@@ -73,10 +73,10 @@ import { useRouter } from 'vue-router';
 const postsStore = usePostsStore();
 const router = useRouter();
 
-// Local state for search query
+
 const searchQuery = ref('');
 
-// Fetch posts and tags on component mount
+
 onMounted(() => {
   postsStore.fetchPosts();
 });
@@ -86,44 +86,41 @@ const posts = computed(() => postsStore.posts);
 const totalPages = computed(() => postsStore.totalPages);
 const currentPage = computed(() => postsStore.currentPage);
 
-// Handle search input with debounce if necessary
+// Handle search input 
 const onSearch = () => {
   postsStore.fetchPosts({ searchQuery: searchQuery.value, page: 1 });
 };
 
-/**
- * Change the current page for pagination.
- * @param {number} newPage - The page number to navigate to.
- */
+// description
+const truncateDescription = (description) => {
+  const words = description.split(' ');
+  if (words.length > 40) {
+    return words.slice(0, 40).join(' ') + '...';
+  }
+  return description;
+};
+
+//  pagination
 const changePage = (newPage) => {
   if (newPage >= 1 && newPage <= totalPages.value) {
     postsStore.fetchPosts({ searchQuery: searchQuery.value, page: newPage });
   }
 };
 
-/**
- * Delete a post by ID.
- * @param {number} id - ID of the post to delete.
- */
+
 const deletePost = async (id) => {
   const confirmed = confirm('Are you sure you want to delete this post?');
   if (confirmed) {
     await postsStore.deletePost(id);
-    // Optionally, show a notification or toast
   }
 };
 
-/**
- * Handle user sign out.
- */
 const signOut = () => {
-  // Implement your sign-out logic, e.g., clearing auth tokens and redirecting
-  // Example:
-  // authStore.logout();
-  router.push('/login');
+  authStore.logout(); 
+  router.push("/login"); 
 };
 </script>
 
 <style scoped>
-/* Add any component-specific styles here */
+
 </style>

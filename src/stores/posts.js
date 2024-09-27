@@ -7,17 +7,19 @@ export const usePostsStore = defineStore("posts", {
     posts: [],
     totalPages: 1,
     currentPage: 1,
-    perPage: 10, // Adjust based on API or preferences
+    perPage: 10,
+    searchQuery: "",
+    selectedTagId: null,
+    postCache: {}, // Cache for individual posts
   }),
+
   actions: {
-    /**
-     * Fetch posts from the API with optional filters.
-     * @param {Object} options - Filtering and pagination options.
-     * @param {string} options.searchQuery - Search term.
-     * @param {number|null} options.tagId - Tag ID to filter by.
-     * @param {number} options.page - Page number for pagination.
-     */
-    async fetchPosts({ searchQuery = "", tagId = null, page = 1 } = {}) {
+
+    async fetchPosts({
+      searchQuery = this.searchQuery,
+      tagId = this.selectedTagId,
+      page = 1,
+    } = {}) {
       try {
         const params = {
           search: searchQuery,
@@ -28,55 +30,86 @@ export const usePostsStore = defineStore("posts", {
         const response = await api.get("/posts", { params });
         const data = response.data.data;
 
+        // Update the store with the fetched data
         this.posts = data.data;
         this.totalPages = data.last_page;
         this.currentPage = data.current_page;
         this.perPage = data.per_page;
+
+        // Update the state to reflect current search query and tag filter
+        this.searchQuery = searchQuery;
+        this.selectedTagId = tagId;
       } catch (error) {
         console.error("Error fetching posts:", error);
       }
     },
 
-    /**
-     * Delete a post by ID.
-     * @param {number} id - ID of the post to delete.
-     */
+    async fetchPostById(id) {
+      if (this.postCache[id]) {
+        return this.postCache[id];
+      }
+      try {
+        const response = await api.get(`/posts/${id}`);
+        const data = response.data.data;
+
+   
+        this.postCache[id] = data;
+
+        return data;
+      } catch (error) {
+        console.error(`Error fetching post with ID ${id}:`, error);
+        throw error; // Propagate the error to handle it in the component
+      }
+    },
+
+    // Delete a post by ID
     async deletePost(id) {
       try {
         await api.delete(`/posts/${id}`);
-        // Remove the post from the state without refetching
+        // Update the posts in state after deletion
         this.posts = this.posts.filter((post) => post.id !== id);
+        // Remove from cache if exists
+        if (this.postCache[id]) {
+          delete this.postCache[id];
+        }
       } catch (error) {
         console.error("Error deleting post:", error);
+        throw error; // Propagate the error to handle it in the component
       }
     },
 
-    /**
-     * Create a new post.
-     * @param {Object} postData - Data for the new post.
-     */
+    // Create a new post
     async createPost(postData) {
       try {
         await api.post("/posts", postData);
-        // Optionally, you can refetch posts or append the new post to the state
-        await this.fetchPosts({ page: this.currentPage });
+        // Refetch posts to reflect the newly created post
+        await this.fetchPosts({
+          searchQuery: this.searchQuery,
+          tagId: this.selectedTagId,
+          page: this.currentPage,
+        });
       } catch (error) {
         console.error("Error creating post:", error);
+        throw error; // Propagate the error to handle it in the component
       }
     },
 
-    /**
-     * Update an existing post.
-     * @param {number} id - ID of the post to update.
-     * @param {Object} postData - Updated data for the post.
-     */
+    // Update an existing post by ID
     async updatePost(id, postData) {
       try {
         await api.put(`/posts/${id}`, postData);
-        // Optionally, you can refetch posts or update the specific post in the state
-        await this.fetchPosts({ page: this.currentPage });
+        if (this.postCache[id]) {
+          this.postCache[id] = { ...this.postCache[id], ...postData };
+        }
+    
+        await this.fetchPosts({
+          searchQuery: this.searchQuery,
+          tagId: this.selectedTagId,
+          page: this.currentPage,
+        });
       } catch (error) {
         console.error("Error updating post:", error);
+        throw error; 
       }
     },
   },

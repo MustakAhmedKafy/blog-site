@@ -13,6 +13,7 @@
   </div>
 </template>
 
+<!-- src/components/Tags.vue -->
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTagStore } from '../stores/tags';
@@ -20,8 +21,7 @@ import { usePostsStore } from '../stores/posts';
 
 const tagStore = useTagStore();
 const postsStore = usePostsStore();
-
-const selectedTags = ref([]); // Array to hold selected tag IDs
+const selectedTags = ref([]);
 
 onMounted(() => {
   tagStore.fetchTags();
@@ -29,10 +29,11 @@ onMounted(() => {
 
 const tags = computed(() => tagStore.tags);
 
-/**
- * Toggle the selection of a tag.
- * @param {number} tagId - ID of the tag to toggle.
- */
+watch(selectedTags, (newTags) => {
+  const tagId = newTags.length > 0 ? newTags.join(',') : null;
+  postsStore.fetchPosts({ tagId, searchQuery: postsStore.searchQuery, page: 1 });
+});
+
 const toggleTag = (tagId) => {
   const index = selectedTags.value.indexOf(tagId);
   if (index === -1) {
@@ -41,18 +42,9 @@ const toggleTag = (tagId) => {
     selectedTags.value.splice(index, 1);
   }
 };
-
-/**
- * Watch for changes in selectedTags and fetch posts accordingly.
- */
-watch(selectedTags, (newTags) => {
-  // Assuming you want to fetch posts that match any of the selected tags
-  // If you need to fetch posts that match all selected tags, adjust the API or filtering accordingly
-  const tagId = newTags.length > 0 ? newTags.join(',') : null;
-  postsStore.fetchPosts({ tagId, searchQuery: postsStore.searchQuery, page: 1 });
-});
 </script>
 
+
 <style scoped>
-/* Add any component-specific styles here */
+
 </style>

@@ -30,29 +30,29 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
-const authStore = useAuthStore();
 const router = useRouter();
-
+const authStore = useAuthStore();
 const email = ref('');
 const password = ref('');
-const loginError = ref(''); // Variable to store login error messages
+const loginError = ref('');
 
 const handleLogin = async () => {
-  loginError.value = ''; // Reset error message
+  loginError.value = ''; // Clear previous error
   const isAuthenticated = await authStore.login({ email: email.value, password: password.value });
 
   if (isAuthenticated) {
-    router.push('/posts'); // Redirect to posts.vue on success
+    console.log('Login successful, redirecting to /posts');
+    // Redirect to the posts page after successful login
+    router.push('/posts').catch((err) => {
+      console.error('Redirection error:', err);
+    });
   } else {
-    loginError.value = 'Login failed. Please try again.'; // Display error message
+    loginError.value = 'Login failed. Please check your credentials and try again.';
   }
 };
 </script>
-
-<style scoped></style>
